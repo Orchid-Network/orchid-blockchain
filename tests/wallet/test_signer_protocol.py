@@ -20,7 +20,17 @@ from chia.wallet.puzzles.p2_delegated_puzzle_or_hidden_puzzle import (
     DEFAULT_HIDDEN_PUZZLE_HASH,
     calculate_synthetic_offset,
 )
+from chia.wallet.util.blind_signer_tl import (
+    BLIND_SIGNER_TRANSPORT,
+    BSTLPathHint,
+    BSTLSigningInstructions,
+    BSTLSigningResponse,
+    BSTLSigningTarget,
+    BSTLSumHint,
+)
 from chia.wallet.util.signer_protocol import (
+    ClvmStreamable,
+    Coin,
     KeyHints,
     PathHint,
     SignedTransaction,
@@ -30,6 +40,8 @@ from chia.wallet.util.signer_protocol import (
     Spend,
     SumHint,
     TransactionInfo,
+    TransportLayer,
+    TransportLayerMapping,
     UnsignedTransaction,
     clvm_serialization_mode,
 )
@@ -139,6 +151,141 @@ def test_signing_serialization() -> None:
         Spend.from_json_dict("blah")
     with pytest.raises(ConversionError):
         UnsignedTransaction.from_json_dict(streamable_blob.hex())
+
+
+class FooSpend(ClvmStreamable):
+    coin: Coin
+    blah: Program
+    blah_also: Program = dataclasses.field(metadata=dict(key="solution"))
+
+    @staticmethod
+    def from_wallet_api(_from: Spend) -> FooSpend:
+        return FooSpend(
+            _from.coin,
+            _from.puzzle,
+            _from.solution,
+        )
+
+    @staticmethod
+    def to_wallet_api(_from: FooSpend) -> Spend:
+        return Spend(
+            _from.coin,
+            _from.blah,
+            _from.blah_also,
+        )
+
+
+def test_transport_layer() -> None:
+    FOO_TRANSPORT = TransportLayer(
+        [
+            TransportLayerMapping(
+                Spend,
+                FooSpend,
+                FooSpend.from_wallet_api,
+                FooSpend.to_wallet_api,
+            )
+        ]
+    )
+
+    spend = Spend(
+        Coin(bytes32([0] * 32), bytes32([0] * 32), uint64(0)),
+        Program.to(1),
+        Program.to([]),
+    )
+
+    with clvm_serialization_mode(True):
+        spend_bytes = bytes(spend)
+
+    spend_program = Program.from_bytes(spend_bytes)
+    assert spend_program.at("ff") == Program.to("coin")
+    assert spend_program.at("rff") == Program.to("puzzle")
+    assert spend_program.at("rrff") == Program.to("solution")
+
+    with clvm_serialization_mode(True, FOO_TRANSPORT):
+        foo_spend_bytes = bytes(spend)
+        assert foo_spend_bytes.hex() == spend.to_json_dict()  # type: ignore[comparison-overlap]
+        assert spend == Spend.from_bytes(foo_spend_bytes)
+        assert spend == Spend.from_json_dict(foo_spend_bytes.hex())
+
+    # Deserialization should only work now if using the transport layer
+    with pytest.raises(Exception):
+        Spend.from_bytes(foo_spend_bytes)
+    with pytest.raises(Exception):
+        Spend.from_json_dict(foo_spend_bytes.hex())
+
+    assert foo_spend_bytes != spend_bytes
+    foo_spend_program = Program.from_bytes(foo_spend_bytes)
+    assert foo_spend_program.at("ff") == Program.to("coin")
+    assert foo_spend_program.at("rff") == Program.to("blah")
+    assert foo_spend_program.at("rrff") == Program.to("solution")
+
+
+def test_blind_signer_transport_layer() -> None:
+    sum_hints: List[SumHint] = [SumHint([b"a", b"b", b"c"], b"offset"), SumHint([b"c", b"b", b"a"], b"offset2")]
+    path_hints: List[PathHint] = [
+        PathHint(b"root1", [uint64(1), uint64(2), uint64(3)]),
+        PathHint(b"root2", [uint64(4), uint64(5), uint64(6)]),
+    ]
+    signing_targets: List[SigningTarget] = [
+        SigningTarget(b"pubkey", b"message", bytes32([0] * 32)),
+        SigningTarget(b"pubkey2", b"message2", bytes32([1] * 32)),
+    ]
+
+    instructions: SigningInstructions = SigningInstructions(
+        KeyHints(sum_hints, path_hints),
+        signing_targets,
+    )
+    signing_response: SigningResponse = SigningResponse(
+        b"signature",
+        bytes32([1] * 32),
+    )
+
+    bstl_sum_hints: List[BSTLSumHint] = [
+        BSTLSumHint([b"a", b"b", b"c"], b"offset"),
+        BSTLSumHint([b"c", b"b", b"a"], b"offset2"),
+    ]
+    bstl_path_hints: List[BSTLPathHint] = [
+        BSTLPathHint(b"root1", [uint64(1), uint64(2), uint64(3)]),
+        BSTLPathHint(b"root2", [uint64(4), uint64(5), uint64(6)]),
+    ]
+    bstl_signing_targets: List[BSTLSigningTarget] = [
+        BSTLSigningTarget(b"pubkey", b"message", bytes32([0] * 32)),
+        BSTLSigningTarget(b"pubkey2", b"message2", bytes32([1] * 32)),
+    ]
+
+    bstl_instructions: BSTLSigningInstructions = BSTLSigningInstructions(
+        bstl_sum_hints,
+        bstl_path_hints,
+        bstl_signing_targets,
+    )
+    bstl_signing_response: BSTLSigningResponse = BSTLSigningResponse(
+        b"signature",
+        bytes32([1] * 32),
+    )
+    with clvm_serialization_mode(True, None):
+        bstl_instructions_bytes = bytes(bstl_instructions)
+        bstl_signing_response_bytes = bytes(bstl_signing_response)
+
+    with clvm_serialization_mode(True, BLIND_SIGNER_TRANSPORT):
+        instructions_bytes = bytes(instructions)
+        signing_response_bytes = bytes(signing_response)
+        assert instructions_bytes == bstl_instructions_bytes == bytes(bstl_instructions)
+        assert signing_response_bytes == bstl_signing_response_bytes == bytes(bstl_signing_response)
+
+    # Deserialization should only work now if using the transport layer
+    with pytest.raises(Exception):
+        SigningInstructions.from_bytes(instructions_bytes)
+    with pytest.raises(Exception):
+        SigningResponse.from_bytes(signing_response_bytes)
+
+    assert BSTLSigningInstructions.from_bytes(instructions_bytes) == bstl_instructions
+    assert BSTLSigningResponse.from_bytes(signing_response_bytes) == bstl_signing_response
+    with clvm_serialization_mode(True, BLIND_SIGNER_TRANSPORT):
+        assert SigningInstructions.from_bytes(instructions_bytes) == instructions
+        assert SigningResponse.from_bytes(signing_response_bytes) == signing_response
+
+    assert Program.from_bytes(instructions_bytes).at("ff") == Program.to("s")
+    assert Program.from_bytes(signing_response_bytes).at("ff") == Program.to("s")
 
 
 @pytest.mark.parametrize(
