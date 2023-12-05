@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import logging
 import traceback
 from contextlib import asynccontextmanager
@@ -29,6 +30,7 @@ from chia.util.ints import uint16, uint64
 from chia.util.keychain import KeyData
 from chia.util.streamable import Streamable, streamable
 from chia.wallet.transaction_record import TransactionRecord
+from chia.wallet.util.signer_protocol import ClvmStreamable
 from chia.wallet.util.tx_config import CoinSelectionConfig, CoinSelectionConfigLoader, TXConfig, TXConfigLoader
 
 NODE_TYPES: Dict[str, Type[RpcClient]] = {
@@ -307,6 +309,16 @@ def timelock_args(func: Callable[..., None]) -> Callable[..., None]:
             default=None,
         )(func)
     )
+
+
+def tx_cmd(func: Callable[..., Dict[str, ClvmStreamable]]) -> Callable[..., None]:
+    def original_cmd(*args: Any) -> None:
+        clvm_blobs: Dict[str, ClvmStreamable] = func(*args)
+        clvm_hex: Dict[str, str] = {k: bytes(blob).hex() for k, blob in clvm_blobs.items()}
+        print("relevant blobs:")
+        print(json.dumps(clvm_hex, indent=4))
+
+    return original_cmd
 
 
 @streamable
