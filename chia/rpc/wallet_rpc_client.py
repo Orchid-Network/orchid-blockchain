@@ -1383,7 +1383,7 @@ class WalletRpcClient(RpcClient):
         request: Dict[str, Any] = {
             "wallet_type": "dao_wallet",
             "mode": mode,
-            "treasury_id": treasury_id,
+            "treasury_id": treasury_id.hex() if treasury_id is not None else treasury_id,
             "dao_rules": dao_rules,
             "amount_of_cats": amount_of_cats,
             "filter_amount": filter_amount,

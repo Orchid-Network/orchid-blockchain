@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any, Dict, List, Type, TypeVar
 
 from chia.rpc.util import RequestType
@@ -133,7 +133,7 @@ class _OfferEndpointResponse(TransactionEndpointResponse):
             offer = Offer.from_bytes(hexstr_to_bytes(json_dict["offer"]))
 
         return cls(
-            **asdict(tx_endpoint),
+            **tx_endpoint.__dict__,
             offer=offer,
             trade_record=TradeRecord.from_json_dict_convenience(json_dict["trade_record"], bytes(offer).hex()),
         )

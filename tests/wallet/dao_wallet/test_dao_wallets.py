@@ -1285,7 +1285,7 @@ async def test_dao_rpc_api(
             funding_wallet_id=1,
         )
     )
-    txs = [cat_tx["tx"], xch_tx["tx"]]
+    txs = [TransactionRecord.from_json_dict(cat_tx["tx"]), TransactionRecord.from_json_dict(xch_tx["tx"])]
     await full_node_api.wait_transaction_records_entered_mempool(records=txs, timeout=60)
     await full_node_api.process_all_wallet_transactions(wallet_0, timeout=60)
     await full_node_api.wait_for_wallet_synced(wallet_node=wallet_node_0, timeout=30)
@@ -1352,7 +1352,7 @@ async def test_dao_rpc_api(
             "fee": fee,
         }
     )
-    txs = [create_proposal["tx"]]
+    txs = [TransactionRecord.from_json_dict(create_proposal["tx"])]
     await full_node_api.wait_transaction_records_entered_mempool(records=txs, timeout=60)
     await full_node_api.process_all_wallet_transactions(wallet_0, timeout=60)
     await full_node_api.wait_for_wallets_synced(wallet_nodes=[wallet_node_0, wallet_node_1], timeout=30)
@@ -1375,7 +1375,7 @@ async def test_dao_rpc_api(
             "is_yes_vote": True,
         }
     )
-    txs = [vote_tx["tx"]]
+    txs = [TransactionRecord.from_json_dict(vote_tx["tx"])]
     await full_node_api.wait_transaction_records_entered_mempool(records=txs, timeout=60)
     await full_node_api.process_all_wallet_transactions(wallet_1, timeout=60)
     await full_node_api.wait_for_wallets_synced(wallet_nodes=[wallet_node_0, wallet_node_1], timeout=30)
@@ -1399,7 +1399,7 @@ async def test_dao_rpc_api(
     )
 
     proposal_tx = await api_0.dao_close_proposal({"wallet_id": dao_wallet_0_id, "proposal_id": prop.proposal_id.hex()})
-    txs = [proposal_tx["tx"]]
+    txs = [TransactionRecord.from_json_dict(proposal_tx["tx"])]
     try:
         await full_node_api.wait_transaction_records_entered_mempool(records=txs, timeout=60)
     except TimeoutError:  # pragma: no cover
@@ -1441,7 +1441,7 @@ async def test_dao_rpc_api(
             "fee": fee,
         }
     )
-    txs = [mint_proposal["tx"]]
+    txs = [TransactionRecord.from_json_dict(mint_proposal["tx"])]
     await full_node_api.wait_transaction_records_entered_mempool(records=txs, timeout=60)
     await full_node_api.process_all_wallet_transactions(wallet_0, timeout=60)
     await full_node_api.wait_for_wallets_synced(wallet_nodes=[wallet_node_0, wallet_node_1], timeout=30)
@@ -1464,7 +1464,7 @@ async def test_dao_rpc_api(
             "is_yes_vote": True,
         }
     )
-    txs = [vote_tx["tx"]]
+    txs = [TransactionRecord.from_json_dict(vote_tx["tx"])]
     await full_node_api.wait_transaction_records_entered_mempool(records=txs, timeout=60)
     await full_node_api.process_all_wallet_transactions(wallet_1, timeout=60)
     await full_node_api.wait_for_wallets_synced(wallet_nodes=[wallet_node_0, wallet_node_1], timeout=30)
@@ -1488,7 +1488,7 @@ async def test_dao_rpc_api(
     )
 
     proposal_tx = await api_0.dao_close_proposal({"wallet_id": dao_wallet_0_id, "proposal_id": prop.proposal_id.hex()})
-    txs = [proposal_tx]
+    txs = [TransactionRecord.from_json_dict(proposal_tx["tx"])]
     try:
         await full_node_api.wait_transaction_records_entered_mempool(records=txs, timeout=60)
     except TimeoutError:  # pragma: no cover
@@ -1539,7 +1539,7 @@ async def test_dao_rpc_api(
             "fee": fee,
         }
     )
-    txs = [update_proposal["tx"]]
+    txs = [TransactionRecord.from_json_dict(update_proposal["tx"])]
     await full_node_api.wait_transaction_records_entered_mempool(records=txs, timeout=60)
     await full_node_api.process_all_wallet_transactions(wallet_0, timeout=60)
     await full_node_api.wait_for_wallets_synced(wallet_nodes=[wallet_node_0, wallet_node_1], timeout=30)
@@ -1562,7 +1562,7 @@ async def test_dao_rpc_api(
             "is_yes_vote": True,
         }
     )
-    txs = [vote_tx["tx"]]
+    txs = [TransactionRecord.from_json_dict(vote_tx["tx"])]
     await full_node_api.wait_transaction_records_entered_mempool(records=txs, timeout=60)
     await full_node_api.process_all_wallet_transactions(wallet_1, timeout=60)
     await full_node_api.wait_for_wallets_synced(wallet_nodes=[wallet_node_0, wallet_node_1], timeout=30)
@@ -1589,7 +1589,7 @@ async def test_dao_rpc_api(
     assert len(open_props["proposals"]) == 1
 
     close_tx = await api_0.dao_close_proposal({"wallet_id": dao_wallet_0_id, "proposal_id": prop.proposal_id.hex()})
-    txs = [close_tx["tx"]]
+    txs = [TransactionRecord.from_json_dict(close_tx["tx"])]
     try:
         await full_node_api.wait_transaction_records_entered_mempool(records=txs, timeout=60)
     except TimeoutError:  # pragma: no cover
@@ -2016,7 +2016,7 @@ async def test_dao_rpc_client(
 
         # coverage tests for filter amount and get treasury id
         treasury_id_resp = await client_0.dao_get_treasury_id(wallet_id=dao_id_0)
-        assert treasury_id_resp["treasury_id"] == dao_wallet_dict_0.treasury_id.hex()
+        assert treasury_id_resp["treasury_id"] == "0x" + dao_wallet_dict_0.treasury_id.hex()
         filter_amount_resp = await client_0.dao_adjust_filter_level(wallet_id=dao_id_0, filter_level=30)
         assert filter_amount_resp["dao_info"]["filter_below_vote_amount"] == 30
 

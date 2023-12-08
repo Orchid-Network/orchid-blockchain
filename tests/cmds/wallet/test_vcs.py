@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 from chia_rs import Coin
 
+from chia.rpc.wallet_request_types import VCMintResponse, VCRevokeResponse, VCSpendResponse
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.bech32m import encode_puzzle_hash
 from chia.util.ints import uint32, uint64
@@ -12,7 +13,7 @@ from chia.wallet.transaction_record import TransactionRecord
 from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG, TXConfig
 from chia.wallet.vc_wallet.vc_store import VCRecord
 from tests.cmds.cmd_test_utils import TestRpcClients, TestWalletRpcClient, logType, run_cli_command_and_assert
-from tests.cmds.wallet.test_consts import FINGERPRINT_ARG, STD_TX, get_bytes32
+from tests.cmds.wallet.test_consts import FINGERPRINT_ARG, STD_TX, STD_UTX, get_bytes32
 
 # VC Commands
 
@@ -28,7 +29,7 @@ def test_vcs_mint(capsys: object, get_test_cli_clients: Tuple[TestRpcClients, Pa
             tx_config: TXConfig,
             target_address: Optional[bytes32] = None,
             fee: uint64 = uint64(0),
-        ) -> Tuple[VCRecord, List[TransactionRecord]]:
+        ) -> VCMintResponse:
             self.add_to_log("vc_mint", (did_id, tx_config, target_address, fee))
 
             class FakeVC:
@@ -39,8 +40,7 @@ def test_vcs_mint(capsys: object, get_test_cli_clients: Tuple[TestRpcClients, Pa
                     if item == "vc":
                         return self
 
-            txs = [STD_TX]
-            return cast(VCRecord, FakeVC()), txs
+            return VCMintResponse([STD_UTX], [STD_TX], cast(VCRecord, FakeVC()))
 
     inst_rpc_client = VcsMintRpcClient()  # pylint: disable=no-value-for-parameter
     test_rpc_clients.wallet_rpc_client = inst_rpc_client
@@ -108,9 +108,9 @@ def test_vcs_update_proofs(capsys: object, get_test_cli_clients: Tuple[TestRpcCl
             new_proof_hash: Optional[bytes32] = None,
             provider_inner_puzhash: Optional[bytes32] = None,
             fee: uint64 = uint64(0),
-        ) -> List[TransactionRecord]:
+        ) -> VCSpendResponse:
             self.add_to_log("vc_spend", (vc_id, tx_config, new_puzhash, new_proof_hash, provider_inner_puzhash, fee))
-            return [STD_TX]
+            return VCSpendResponse([STD_UTX], [STD_TX])
 
     inst_rpc_client = VcsUpdateProofsRpcClient()  # pylint: disable=no-value-for-parameter
     test_rpc_clients.wallet_rpc_client = inst_rpc_client
@@ -210,9 +210,9 @@ def test_vcs_revoke(capsys: object, get_test_cli_clients: Tuple[TestRpcClients, 
             vc_parent_id: bytes32,
             tx_config: TXConfig,
             fee: uint64 = uint64(0),
-        ) -> List[TransactionRecord]:
+        ) -> VCRevokeResponse:
             self.add_to_log("vc_revoke", (vc_parent_id, tx_config, fee))
-            return [STD_TX]
+            return VCRevokeResponse([STD_UTX], [STD_TX])
 
     inst_rpc_client = VcsRevokeRpcClient()  # pylint: disable=no-value-for-parameter
     test_rpc_clients.wallet_rpc_client = inst_rpc_client

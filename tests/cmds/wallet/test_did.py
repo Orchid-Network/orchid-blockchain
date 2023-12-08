@@ -3,12 +3,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
+from chia_rs import G2Element
+
+from chia.rpc.wallet_request_types import DIDMessageSpendResponse, DIDTransferDIDResponse, DIDUpdateMetadataResponse
 from chia.types.blockchain_format.sized_bytes import bytes48
 from chia.types.signing_mode import SigningMode
+from chia.types.spend_bundle import SpendBundle
 from chia.util.bech32m import encode_puzzle_hash
+from chia.util.ints import uint32
 from chia.wallet.conditions import Condition, CreateCoinAnnouncement, CreatePuzzleAnnouncement
 from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG, TXConfig
 from tests.cmds.cmd_test_utils import TestRpcClients, TestWalletRpcClient, logType, run_cli_command_and_assert
+from tests.cmds.wallet.cmd_test_utils import STD_TX, STD_UTX
 from tests.cmds.wallet.test_consts import FINGERPRINT_ARG, get_bytes32
 
 # DID Commands
@@ -174,9 +180,9 @@ def test_did_update_metadata(capsys: object, get_test_cli_clients: Tuple[TestRpc
             wallet_id: int,
             metadata: Dict[str, object],
             tx_config: TXConfig,
-        ) -> Dict[str, object]:
+        ) -> DIDUpdateMetadataResponse:
             self.add_to_log("update_did_metadata", (wallet_id, metadata, tx_config))
-            return {"wallet_id": wallet_id, "spend_bundle": "spend bundle here"}
+            return DIDUpdateMetadataResponse([STD_UTX], [STD_TX], SpendBundle([], G2Element()), uint32(wallet_id))
 
     inst_rpc_client = DidUpdateMetadataRpcClient()  # pylint: disable=no-value-for-parameter
     test_rpc_clients.wallet_rpc_client = inst_rpc_client
@@ -246,9 +252,9 @@ def test_did_message_spend(capsys: object, get_test_cli_clients: Tuple[TestRpcCl
     class DidMessageSpendRpcClient(TestWalletRpcClient):
         async def did_message_spend(
             self, wallet_id: int, tx_config: TXConfig, extra_conditions: Tuple[Condition, ...]
-        ) -> Dict[str, object]:
+        ) -> DIDMessageSpendResponse:
             self.add_to_log("did_message_spend", (wallet_id, tx_config, extra_conditions))
-            return {"spend_bundle": "spend bundle here"}
+            return DIDMessageSpendResponse([STD_UTX], [STD_TX], SpendBundle([], G2Element()))
 
     inst_rpc_client = DidMessageSpendRpcClient()  # pylint: disable=no-value-for-parameter
     test_rpc_clients.wallet_rpc_client = inst_rpc_client
@@ -296,9 +302,14 @@ def test_did_transfer(capsys: object, get_test_cli_clients: Tuple[TestRpcClients
             fee: int,
             with_recovery: bool,
             tx_config: TXConfig,
-        ) -> Dict[str, object]:
+        ) -> DIDTransferDIDResponse:
             self.add_to_log("did_transfer_did", (wallet_id, address, fee, with_recovery, tx_config))
-            return {"transaction_id": get_bytes32(2).hex(), "transaction": "transaction here"}
+            return DIDTransferDIDResponse(
+                [STD_UTX],
+                [STD_TX],
+                STD_TX,
+                STD_TX.name,
+            )
 
     inst_rpc_client = DidTransferRpcClient()  # pylint: disable=no-value-for-parameter
     test_rpc_clients.wallet_rpc_client = inst_rpc_client

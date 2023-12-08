@@ -7,6 +7,7 @@ from chia.types.spend_bundle import SpendBundle
 from chia.util.ints import uint8, uint32, uint64
 from chia.wallet.conditions import ConditionValidTimes
 from chia.wallet.transaction_record import TransactionRecord
+from chia.wallet.util.signer_protocol import KeyHints, SigningInstructions, TransactionInfo, UnsignedTransaction
 from chia.wallet.util.transaction_type import TransactionType
 
 FINGERPRINT: str = "123456"
@@ -41,3 +42,6 @@ STD_TX = TransactionRecord(
     memos=[(get_bytes32(3), [bytes([4] * 32)])],
     valid_times=ConditionValidTimes(),
 )
+
+
+STD_UTX = UnsignedTransaction(TransactionInfo([]), SigningInstructions(KeyHints([], []), []))
